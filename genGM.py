@@ -37,18 +37,23 @@ def generate_GM(K, D, Plot=True):
     p = nr.rand(K)
     p /= np.sum(p)
     GM_obj = GaussianMixture(p, mus, sigmas)
+    
+    xx, yy = np.mgrid[np.min(
+    mus[:,0])-stdsig:np.max(mus[:,0])+stdsig:.1, np.min(mus[:,1])-stdsig:np.max(mus[:,1])+stdsig:.1]
+    # xx, yy = np.mgrid[-4:6:.1, -4:6:.1]
+    pos = np.empty(xx.shape + (2,))
+    pos[:,:,0] = xx; pos[:,:,1] = yy
+    
+    f = GM_obj.pdf(pos)
+    
     if D == 2 and Plot:
-        xx, yy = np.mgrid[np.min(
-            mus[:,0])-stdsig:np.max(mus[:,0])+stdsig:.1, np.min(mus[:,1])-stdsig:np.max(mus[:,1])+stdsig:.1]
-        # xx, yy = np.mgrid[-4:6:.1, -4:6:.1]
-        pos = np.empty(xx.shape + (2,))
-        pos[:,:,0] = xx; pos[:,:,1] = yy
-        f = GM_obj.pdf(pos)
+
         # print(f.shape)
         plt.contour(xx, yy, f, 20)
         plt.scatter(*mus.T, facecolors='none', edgecolors='r')
         plt.show()
-    return GM_obj, f
+    return GM_obj
+
 
 
 # def GM_obj(mus, sigmas):
@@ -57,4 +62,4 @@ def generate_GM(K, D, Plot=True):
 #         rvs.append(multivariate_normal(mus[k], sigmas[k]))
 #     return rvs
 
-generate_GM(20, 2)
+# generate_GM(20, 2)
