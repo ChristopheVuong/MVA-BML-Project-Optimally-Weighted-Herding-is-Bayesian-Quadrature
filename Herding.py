@@ -41,6 +41,7 @@ class GaussianKernel():
         self.covariance = sigma
     
     def pdf(self,x,x2):
+        ## return np.exp(np.linalg.norm(x-x2)**2/(sigma**2) # ???
         return multivariate_normal(x2,self.covariance).pdf(x)
 
 
@@ -116,7 +117,7 @@ def EE_Gaussian(kernel,gm):
         
         exp = np.exp(-(mu_k.T@(inv_sigma_k-inv_sigma_k@Q_k@inv_sigma_k)@mu_k-a_k.T@inv_S_k@a_k)/2)
 
-        output += gm.weights[k]*np.sqrt(det_Q_k*det_S_k/det_sigma_k)*exp*E_Gaussian(a_k,sigma,mu_k,sigma_k)
+        output += gm.weights[k]*np.sqrt(det_Q_k*det_S_k/det_sigma_k)*exp*E_Gaussian(np.array([a_k]),sigma,mu_k,sigma_k)
     return output/np.sqrt(np.linalg.det(sigma))
 
 
@@ -129,13 +130,13 @@ def MMD2(kernel,gm,samples):
     crossed_term = 0
     for sample in samples:
         for k in range(len(gm.means)):
-            crossed_term += E_Gaussian(sample,kernel.covariance,gm.means[k],gm.covariances[k])
+            crossed_term += gm.weights[k]*E_Gaussian(np.array([sample]),kernel.covariance,gm.means[k],gm.covariances[k])
     
     gram_term = 0
     for sample_n in samples:
         for sample_m in samples:
             gram_term += kernel.pdf(sample_n,sample_m)
     
-    print(EE,crossed_term,gram_term)
+    # print(EE,crossed_term,gram_term)
     
     return EE - crossed_term/N + gram_term/N**2
