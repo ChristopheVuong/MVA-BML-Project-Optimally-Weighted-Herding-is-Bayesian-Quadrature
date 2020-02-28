@@ -6,6 +6,15 @@ import numpy.random as nr
 import numpy.linalg as nlin
 from Herding import *
 
+def fillGram(gram,z,kernel,gm,samples):
+    for i in range(len(samples)):
+        for j in range(len(samples)):
+            gram[i,j] = kernel.pdf(np.array(samples[i]),np.array(samples[j]))
+            gram[j,i] = gram[i,j]
+
+        for l in range(len(gm.means)):
+            z[i] += gm.weights[l]*E_Gaussian(np.array([samples[i]]),kernel.covariance,gm.means[l],gm.covariances[l]) 
+
 def update(k,gram,x,kernel,gm,samples):
     for l in range(k):
         g = kernel.pdf(np.array(samples[l]),np.array(x))
@@ -61,7 +70,7 @@ def scoreSBQ(samples,kernel,gm,new_samples,gram,z,k):
     
     return scores
 
-def generate_SBQ(kernel,gm,area,samples,gram,z,k,num_queries=10000):
+def generate_SBQ(kernel,gm,area,samples,gram,z,k,num_queries=1000):
     d = area.shape[0]
     new_samples = area[None, 0] + \
         (area[None, 1] - area[None, 0]) * nr.rand(num_queries, d)
@@ -70,9 +79,10 @@ def generate_SBQ(kernel,gm,area,samples,gram,z,k,num_queries=10000):
     return new_samples[np.argmax(scores),:]
 
 def SBQ(num_samples,kernel,gm,area,samples=[]):
-    gram = np.eye(num_samples)
-    z = np.zeros(num_samples)
-    for k in range(num_samples):
+    gram = np.eye(len(samples)+num_samples)
+    z = np.zeros(len(samples)+num_samples)
+    fillGram(gram,z,kernel,gm,samples)
+    for k in range(len(samples),num_samples+len(samples)):
         print(k)
         samples.append(generate_SBQ(kernel,gm,area,samples,gram,z,k))
         update(k,gram,samples[-1],kernel,gm,samples)
