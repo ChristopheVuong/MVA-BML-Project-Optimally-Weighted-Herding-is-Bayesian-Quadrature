@@ -5,16 +5,7 @@ import scipy as scp
 from scipy.stats import multivariate_normal
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
-class GaussianMixture():
-    def __init__(self, p, mus, sigmas):
-        self.means = mus
-        self.covariances = sigmas
-        self.weights = p
-        self.rvs = [multivariate_normal(mus[k], sigmas[k]) for k in range(len(self.weights))]
-
-    def pdf(self, X):
-        return np.sum([self.weights[i]*self.rvs[i].pdf(X) for i in range(len(self.weights))], axis=0)
+from utils import *
 
 
 def generate_GM(K, D, Plot=True):
@@ -54,12 +45,3 @@ def generate_GM(K, D, Plot=True):
         plt.show()
 
     return GM_obj
-
-
-# def GM_obj(mus, sigmas):
-#     rvs = []
-#     for k in range(mus.shape[0]):
-#         rvs.append(multivariate_normal(mus[k], sigmas[k]))
-#     return rvs
-
-# generate_GM(20, 2)

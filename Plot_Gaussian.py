@@ -19,8 +19,3 @@ def plotContour(gm,samples=None):
     if samples is not None:
         plt.scatter(*samples.T,c='red',marker='x')
     plt.show()
-
-    # def plotContour2(gm, herding_samples=None, sbq_samples=None):
-    #     if sbq_samples is not None:
-    #         plt.scatter(*sbq_samples.T, c='red', marker='x')
-    #     plotContour(gm, herding_samples)

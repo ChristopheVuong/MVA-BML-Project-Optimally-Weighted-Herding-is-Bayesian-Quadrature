@@ -6,12 +6,15 @@ import numpy.random as nr
 import numpy.linalg as nlin
 import numba
 from Herding import *
+from utils import *
+
 
 def update(k,gram,x,kernel,gm,samples):
     for l in range(k):
         g = kernel.pdf(np.array(samples[l]),np.array(x))
         gram[l,k] = g
         gram[k,l] = g
+        
         
 def scoreSBQ(samples,kernel,gm,new_samples,gram,z,k):
     g = gram.copy()
@@ -27,6 +30,7 @@ def scoreSBQ(samples,kernel,gm,new_samples,gram,z,k):
         scores.append(zz[l,:].T@np.linalg.inv(g)@zz[l,:])
     
     return scores
+
 
 def scoreSBQ(samples,kernel,gm,new_samples,gram,z,k):
     """
@@ -62,7 +66,8 @@ def scoreSBQ(samples,kernel,gm,new_samples,gram,z,k):
     
     return scores
 
-def generate_SBQ(kernel,gm,area,samples,gram,z,k,num_queries=10000):
+
+def generate_SBQ(kernel,gm,area,samples,gram,z,k,num_queries=1000):
     d = area.shape[0]
     new_samples = area[None, 0] + \
         (area[None, 1] - area[None, 0]) * nr.rand(num_queries, d)
@@ -71,11 +76,11 @@ def generate_SBQ(kernel,gm,area,samples,gram,z,k,num_queries=10000):
     return new_samples[np.argmax(scores),:]
 
 
-# @numba.jit(nopython=True, parallel=True)
 def SBQ(num_samples,kernel,gm,area,samples=[]):
-    gram = np.eye(num_samples)
-    z = np.zeros(num_samples)
-    for k in range(num_samples):
+    gram = np.eye(len(samples)+num_samples)*kernel.pdf([0,0],[0,0])
+    z = np.zeros(len(samples)+num_samples)
+    fillGram(gram,z,kernel,gm,samples)
+    for k in range(len(samples),num_samples+len(samples)):
         print(k)
         samples.append(generate_SBQ(kernel,gm,area,samples,gram,z,k))
         update(k,gram,samples[-1],kernel,gm,samples)
