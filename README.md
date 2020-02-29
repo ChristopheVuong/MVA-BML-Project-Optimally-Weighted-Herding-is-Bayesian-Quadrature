@@ -1,1 +1,1 @@
-# MVA---BMLProject---Optimally-Weighted-Herding-is-Bayesian-Quadrature
+# MVA - BML Project - Optimally-Weighted Herding is Bayesian Quadrature

@@ -52,8 +52,8 @@ def generate_GM(K, D, Plot=True):
         plt.contour(xx, yy, f, 20)
         plt.scatter(*mus.T, facecolors='none', edgecolors='r')
         plt.show()
-    return GM_obj
 
+    return GM_obj
 
 
 # def GM_obj(mus, sigmas):
