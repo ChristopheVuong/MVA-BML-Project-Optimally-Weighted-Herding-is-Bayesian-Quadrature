@@ -88,3 +88,9 @@ def SBQ(num_samples,kernel,gm,area,samples=[]):
             z[k] += gm.weights[l]*E_Gaussian(np.array([samples[-1]]),kernel.covariance,gm.means[l],gm.covariances[l])
         
     return np.array(samples),gram,z
+
+
+def MMD2SBQ_Gaussian(kernel,gm,samples,gram,z):
+    N = len(samples)
+    EE = EE_Gaussian(gm,kernel)
+    return EE - z.T@np.linalg.inv(gram)@z

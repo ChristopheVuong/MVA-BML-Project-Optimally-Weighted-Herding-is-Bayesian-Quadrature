@@ -8,7 +8,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 from genGM import *
-
+# from SBQ import *
+# from Herding import *
 
 def multivariate_gaussian(pos, mu, Sigma):
     """
