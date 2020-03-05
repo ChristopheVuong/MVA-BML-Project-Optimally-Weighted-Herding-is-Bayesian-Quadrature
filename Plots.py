@@ -177,7 +177,7 @@ def targetOutRKHS(beta, c, gm, covs):
 
 def plotOutErrors(samplesH, samplesSBQ, samplesIID, gm, kernel):
     """
-        Compute functions outside the RKHS 
+        Compute functions outside the RKHS (Gaussian densities with random covariances) 
         and their integrals with respect to the distribution
     """
 
@@ -228,8 +228,8 @@ def plotOutErrors(samplesH, samplesSBQ, samplesIID, gm, kernel):
     plt.legend()
     plt.xscale("log")
     plt.yscale("log")
-    plt.title("Mean Absolute Error averaged over %s functions in the RKHS" % nfuncs)
-    plt.savefig('figures/Mean Absolute Error')
+    plt.title("Mean Absolute Error averaged over %s functions outside the RKHS" % nfuncs)
+    plt.savefig('figures/Mean Out Error')
     plt.show()
 
 
