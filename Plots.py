@@ -118,14 +118,15 @@ def generateRKHSFunc(nfuncs, kernel, gm):
     return funcs, targets
 
 
-
-
-def plotErrors(samplesH, samplesSBQ, samplesIID, gm, kernel, funcs, targets):
+def plotRKHSErrors(samplesH, samplesSBQ, samplesIID, gm, kernel):
     """
         Compute functions in the span of the kernel functions
-        and their integrals with respec t to the distribution
+        and their integrals with respect to the distribution
     """
 
+    N = 20
+    nfuncs = 250
+    
     nSBQ = len(samplesSBQ)                         # plot for as many samples as SBQ
     gramH = np.zeros((nSBQ,nSBQ))
     zH = np.zeros((nSBQ))
@@ -134,17 +135,26 @@ def plotErrors(samplesH, samplesSBQ, samplesIID, gm, kernel, funcs, targets):
     gramSBQ = np.zeros((nSBQ,nSBQ))
     zSBQ = np.zeros((nSBQ))
     fillGram(gramSBQ,zSBQ,kernel,gm,samplesSBQ)    # BQ weights for Bayesian quadrature
-
-    nfuncs = len(funcs)
+    
     errorsIID = 0; errorsH = 0; errorsH_BQ = 0; errorsSBQ = 0
 
-    for i in range(nfuncs):
-        errorsIID += np.abs(np.cumsum(funcs[i](samplesIID)) / np.arange(1, len(samplesH)+1) - targets[i][None])
-        errorsH += np.abs(np.cumsum(funcs[i](samplesH)) / np.arange(1, len(samplesH)+1) - targets[i][None])
-        errorsH_BQ +=  np.abs(np.cumsum(funcs[i](samplesH) * np.linalg.inv(gramH)@zH) - targets[i][None]) 
-        errorsSBQ += np.abs(np.cumsum(funcs[i](samplesSBQ) * np.linalg.inv(gramSBQ)@zSBQ) - targets[i][None]) 
+    for _ in range(nfuncs):
+        beta = 10 * (np.random.rand(N) + 1)
+        c = 4 * 2 * (np.random.rand(N, 2) - 1/2)   # mean for kernel 
+        factor = 0
+        for k in range(N):
+            for l in range(N):
+                factor += beta[k] * beta[l] * kernel.pdf(c[k], c[l])
+        beta /= (factor)**(1/2)                # in the unit ball the RKHS
+        f = lambda x : np.sum([beta[i] * kernel.pdf(x, c[i]) for i in range(len(beta))], axis=0)
+        target = targetRKHS(beta, c, kernel, gm)
+        errorsIID += np.abs(np.cumsum(f(samplesIID)) / np.arange(1, len(samplesIID)+1) - target[None])
+        errorsH += np.abs(np.cumsum(f(samplesH)) / np.arange(1, len(samplesH)+1) - target[None])
+        errorsH_BQ +=  np.abs(np.cumsum(f(samplesH) * np.linalg.inv(gramH)@zH) - target[None]) 
+        errorsSBQ += np.abs(np.cumsum(f(samplesSBQ) * np.linalg.inv(gramSBQ)@zSBQ) - target[None]) 
 
     errorsIID /= nfuncs; errorsH /= nfuncs; errorsH_BQ /= nfuncs; errorsSBQ /= nfuncs
+
     plt.figure(figsize=(10, 7))
     plt.plot(errorsSBQ,label="SBQ with BQ weights")
     plt.plot(errorsH_BQ,label="Herding with BQ weights")
@@ -156,3 +166,115 @@ def plotErrors(samplesH, samplesSBQ, samplesIID, gm, kernel, funcs, targets):
     plt.title("Mean Absolute Error averaged over %s functions in the RKHS" % nfuncs)
     plt.savefig('figures/Mean Absolute Error')
     plt.show()
+
+
+def targetOutRKHS(beta, c, gm, covs):
+    s = 0
+    for i in range(len(beta)):
+        for j in range(len(gm.weights)):
+            s += beta[i] * gm.weights[j] * multivariate_normal.pdf(c[i], gm.means[j], covs[i] + gm.covariances[j])
+    return s
+
+def plotOutErrors(samplesH, samplesSBQ, samplesIID, gm, kernel):
+    """
+        Compute functions outside the RKHS 
+        and their integrals with respect to the distribution
+    """
+
+    N = 20
+    nfuncs = 250
+    D = 2 # dim
+    
+    nSBQ = len(samplesSBQ)                         # plot for as many samples as SBQ
+    gramH = np.zeros((nSBQ,nSBQ))
+    zH = np.zeros((nSBQ))
+    fillGram(gramH,zH,kernel,gm,samplesH)          # BQ weights for kernel herding
+
+    gramSBQ = np.zeros((nSBQ,nSBQ))
+    zSBQ = np.zeros((nSBQ))
+    fillGram(gramSBQ,zSBQ,kernel,gm,samplesSBQ)    # BQ weights for Bayesian quadrature
+    
+    errorsIID = 0; errorsH = 0; errorsH_BQ = 0; errorsSBQ = 0
+
+    stdsig = 2      # parameter for covariance matrix
+    ratio = [.1,2]  # parameter for covariance matrix
+
+    for _ in range(nfuncs):    
+        beta = 2 * (np.random.rand(N) + 1)
+        c = 4 * 2 * (np.random.rand(N, 2) - 1/2)   # mean for kernel
+        covs = np.zeros((N, D, D))
+        
+        for k in range(N):
+            sig = stdsig * (np.random.rand(D)*(ratio[1] - ratio[0]) + ratio[0])
+            covs[k] = np.diag(sig**(-2))
+            U, _ = np.linalg.qr(np.random.randn(D,D))
+            covs[k] = U @ covs[k] @ U.T
+
+        f = lambda x : np.sum([beta[i] * multivariate_normal.pdf(x, c[i], covs[i]) for i in range(len(beta))], axis=0)
+
+        target = targetOutRKHS(beta, c, gm, covs)
+        errorsIID += np.abs(np.cumsum(f(samplesIID)) / np.arange(1, len(samplesIID)+1) - target[None])
+        errorsH += np.abs(np.cumsum(f(samplesH)) / np.arange(1, len(samplesH)+1) - target[None])
+        errorsH_BQ +=  np.abs(np.cumsum(f(samplesH) * np.linalg.inv(gramH)@zH) - target[None]) 
+        errorsSBQ += np.abs(np.cumsum(f(samplesSBQ) * np.linalg.inv(gramSBQ)@zSBQ) - target[None]) 
+
+    errorsIID /= nfuncs; errorsH /= nfuncs; errorsH_BQ /= nfuncs; errorsSBQ /= nfuncs
+
+    plt.figure(figsize=(10, 7))
+    plt.plot(errorsSBQ,label="SBQ with BQ weights")
+    plt.plot(errorsH_BQ,label="Herding with BQ weights")
+    plt.plot(errorsH,label="Herding with 1/N weights")
+    plt.plot(errorsIID,label="iid sampling")
+    plt.legend()
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.title("Mean Absolute Error averaged over %s functions in the RKHS" % nfuncs)
+    plt.savefig('figures/Mean Absolute Error')
+    plt.show()
+
+
+
+
+
+# def plotErrors(samplesH, samplesSBQ, samplesIID, gm, kernel, funcs, targets):
+#     """
+#         Compute functions in the span of the kernel functions
+#         and their integrals with respec t to the distribution
+#     """
+
+#     nSBQ = len(samplesSBQ)                         # plot for as many samples as SBQ
+#     gramH = np.zeros((nSBQ,nSBQ))
+#     zH = np.zeros((nSBQ))
+#     fillGram(gramH,zH,kernel,gm,samplesH)          # BQ weights for kernel herding
+
+#     gramSBQ = np.zeros((nSBQ,nSBQ))
+#     zSBQ = np.zeros((nSBQ))
+#     fillGram(gramSBQ,zSBQ,kernel,gm,samplesSBQ)    # BQ weights for Bayesian quadrature
+
+#     nfuncs = len(funcs)
+#     # errorsIID = 0; 
+#     errorsH = 0; 
+#     # errorsH_BQ = 0; 
+#     # errorsSBQ = 0
+
+#     for i in range(nfuncs):
+#         # errorsIID += np.abs(np.cumsum(funcs[i](samplesIID)) / np.arange(1, len(samplesIID)+1) - (targets[i])[None])
+#         errorsH += np.abs(np.cumsum(funcs[i](samplesH)) / np.arange(1, len(samplesH)+1) - (targets[i])[None])
+#         # errorsH_BQ +=  np.abs(np.cumsum(funcs[i](samplesH) * np.linalg.inv(gramH)@zH) - (targets[i])[None]) 
+#         # errorsSBQ += np.abs(np.cumsum(funcs[i](samplesSBQ) * np.linalg.inv(gramSBQ)@zSBQ) - (targets[i])[None]) 
+
+#     # errorsIID /= nfuncs; 
+#     errorsH /= nfuncs
+#     # errorsH_BQ /= nfuncs; errorsSBQ /= nfuncs
+
+#     plt.figure(figsize=(10, 7))
+#     # plt.plot(errorsSBQ,label="SBQ with BQ weights")
+#     # plt.plot(errorsH_BQ,label="Herding with BQ weights")
+#     plt.plot(errorsH,label="Herding with 1/N weights")
+#     # plt.plot(errorsIID,label="iid sampling")
+#     plt.legend()
+#     plt.xscale("log")
+#     plt.yscale("log")
+#     plt.title("Mean Absolute Error averaged over %s functions in the RKHS" % nfuncs)
+#     plt.savefig('figures/Mean Absolute Error')
+#     plt.show()
