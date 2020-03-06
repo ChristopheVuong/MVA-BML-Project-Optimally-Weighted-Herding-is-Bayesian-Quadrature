@@ -1,38 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import sys
 import numpy as np
-import numpy.random as nr
-import numpy.linalg as nlin
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
-from genGM import *
-# from SBQ import *
-# from Herding import *
-
-def multivariate_gaussian(pos, mu, Sigma):
-    """
-        Return the multivariate Gaussian distribution on array pos.
-
-        Input:
-        - pos is an array constructed by packing the meshed arrays of variables
-        x_1, x_2, x_3, ..., x_k into its _last_ dimension.
-        - mu: expectation of a gaussian
-        - sigma: standard deviation of a gaussian
-        
-        Source: https://stackoverflow.com/questions/28342968/how-to-plot-a-2d-gaussian-with-different-sigma
-    """
-
-    n = mu.shape[0]
-    Sigma_det = np.linalg.det(Sigma)
-    Sigma_inv = np.linalg.inv(Sigma)
-    N = np.sqrt((2*np.pi)**n * Sigma_det)
-    # This einsum call calculates (x-mu)T.Sigma-1.(x-mu) in a vectorized
-    # way across all the input variables.
-    fac = np.einsum('...k,kl,...l->...', pos-mu, Sigma_inv, pos-mu)
-
-    return np.exp(-fac / 2) / N
 
 
 class GaussianMixture():
@@ -54,32 +26,42 @@ class GaussianKernel():
         return multivariate_normal(x2,self.covariance).pdf(x)
 
 
-def E_Gaussian(x,sigma0,mu,sigma):
+
+def E_Gaussian(x, mix, kernel):
     """
         Inputs:
-        - sigma0: variance of kernel
-        - mu,sigma: parameters of gaussian law
+        - x the samples
+        - mix: the Gaussian mixture object
+        - kernel: the kernel object
     """
-    inv_sigma0 = np.linalg.inv(sigma0)
-    inv_sigma = np.linalg.inv(sigma)
-    inv_new_sigma = inv_sigma0+inv_sigma
-    new_sigma = np.linalg.inv(inv_new_sigma)
+    # inv_sigma0 = np.linalg.inv(sigma0)
+    # inv_sigma = np.linalg.inv(sigma)
+    # inv_new_sigma = inv_sigma0+inv_sigma
+    # new_sigma = np.linalg.inv(inv_new_sigma)
     
-    new_mu = x@inv_sigma0 + (inv_sigma@mu)[None]
-    # take the diagonal with np.einsum (parallelization)
-    exp = np.exp(-(1/2)*(np.einsum('ij,jk,ki->i', x, inv_sigma0, x.T) +
-                         (mu.T@inv_sigma@mu)-np.einsum('ij,jk,ki->i', new_mu, new_sigma, new_mu.T)))
+    # new_mu = x@inv_sigma0 + (inv_sigma@mu)[None]
+    # # take the diagonal with np.einsum (parallelization)
+    # exp = np.exp(-(1/2)*(np.einsum('ij,jk,ki->i', x, inv_sigma0, x.T) +
+    #                      (mu.T@inv_sigma@mu)-np.einsum('ij,jk,ki->i', new_mu, new_sigma, new_mu.T)))
     
-    return np.sqrt(np.linalg.det(new_sigma)/(np.linalg.det(sigma0)*np.linalg.det(sigma)))*exp/(2*np.pi)
+    # return np.sqrt(np.linalg.det(new_sigma)/(np.linalg.det(sigma0)*np.linalg.det(sigma)))*exp/(2*np.pi)
+    K = len(mix.means)
+    E = 0
+    for k in range(K):
+        E += mix.weights[k] * multivariate_normal.pdf(x, mix.means[k], mix.covariances[k] + kernel.covariance)
+    return E
 
 
 def EE_Gaussian(distrib, kernel):
     """
-        Compute the prior variance of BMC when the input distribution is a distture of
+        Compute the prior variance of BMC when the input distribution is a mixture of
         Gaussians, and the kernel is a Gaussian.
-        Only for Gaussians for now !!! 
+
+        Inputs:
+        - distrib: a mixture of Gaussians
+        - kernel: a Gaussian kernel 
     """
-    K = distrib.means.shape[0]
+    K = len(distrib.means)
     prior_variance = 0
     for k in range(K):
         for j in range(K):
@@ -89,10 +71,30 @@ def EE_Gaussian(distrib, kernel):
 
 
 def fillGram(gram,z,kernel,gm,samples):
+    """
+        Function to complete the Gram matrix and z
+        Used for the computations of BQ weights, MMD and errors
+
+        Inputs:
+        - gram: a matrix to complete thanks to
+        - z : E[k(x_n,x)]_{n=1,...,num_samples}
+        - kernel: a Gaussian kernel
+    """
     for i in range(len(samples)):
         for j in range(len(samples)):
             gram[i,j] = kernel.pdf(np.array(samples[i]),np.array(samples[j]))
             gram[j,i] = gram[i,j]
 
-        for l in range(len(gm.means)):
-            z[i] += gm.weights[l]*E_Gaussian(np.array([samples[i]]),kernel.covariance,gm.means[l],gm.covariances[l]) 
+        z[i] += E_Gaussian(np.array([samples[i]]), gm, kernel) 
+
+
+
+# The MIT License (MIT)
+# Copyright (c) 2016 Vladimir Ignatev
+
+def progress(count, total, status=''):
+    # percents = round(100.0 * count / float(total), 1)
+    bar = '=' * (count+1) + '-' * (total - count -1)
+
+    sys.stdout.write('[%s] %s / %s ... %s\r' % (bar, count+1, total, status))
+    sys.stdout.flush()
