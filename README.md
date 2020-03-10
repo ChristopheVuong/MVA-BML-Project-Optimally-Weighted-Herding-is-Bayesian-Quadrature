@@ -6,6 +6,8 @@ Based on the paper "Optimally-Weighted Herding is Bayesian Quadrature" by Ferenc
 
 Project done with Python.
 
+You can see the results in the file "Herding vs SBQ.ipynb".
+
 ## Requirements
 
 The project requires some Python librairies:
