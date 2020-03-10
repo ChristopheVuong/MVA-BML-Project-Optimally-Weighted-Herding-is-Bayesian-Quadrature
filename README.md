@@ -2,6 +2,8 @@
 
 Authors: Christophe Vuong and Clément Bonet
 
+Based on the paper "Optimally-Weighted Herding is Bayesian Quadrature" by Ferenc Huszár and David Duvenaud
+
 Project done with Python.
 
 ## Requirements
