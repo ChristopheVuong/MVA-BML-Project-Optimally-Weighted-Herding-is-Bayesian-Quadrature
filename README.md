@@ -1,5 +1,7 @@
 # MVA - BML Project - Optimally-Weighted Herding is Bayesian Quadrature
 
+Authors: Christophe Vuong and Clément Bonet
+
 Project done with Python.
 
 ## Requirements
